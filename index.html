@@ -1,0 +1,465 @@
+<title>주도테마 브리핑</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+/* 레이아웃: 휴대폰 한 손 화면. 위에서 아래로 = 시각 → 탭 → 정렬/필터 → 테마(접힘) → 종목(호가창 잔량 막대) → 종목 상세 시트 */
+:root {
+  --bg: #F3F4F6;
+  --surface: #FFFFFF;
+  --ink: #15171C;
+  --muted: #6B717D;
+  --rule: #E2E5EA;
+  --up: #DE2338;
+  --up-weak: #FCE4E7;
+  --down: #2356C4;
+  --down-weak: #E4EBFA;
+  --amber: #E89A00;
+  --amber-fill: #FFC233;
+  --amber-weak: #FFF2CF;
+  --scrim: rgba(15, 17, 21, .42);
+  --font: "IBM Plex Sans KR", "Malgun Gothic", "Apple SD Gothic Neo", system-ui, sans-serif;
+  --r-sm: 6px;
+  --r-lg: 16px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0E1014; --surface: #171A20; --ink: #ECEEF2; --muted: #8C93A0; --rule: #272B33;
+    --up: #FF5A6D; --up-weak: rgba(255, 90, 109, .15); --down: #6592FF; --down-weak: rgba(101, 146, 255, .15);
+    --amber: #FFC233; --amber-fill: #FFC233; --amber-weak: rgba(255, 194, 51, .14);
+    --scrim: rgba(0, 0, 0, .6); color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0E1014; --surface: #171A20; --ink: #ECEEF2; --muted: #8C93A0; --rule: #272B33;
+  --up: #FF5A6D; --up-weak: rgba(255, 90, 109, .15); --down: #6592FF; --down-weak: rgba(101, 146, 255, .15);
+  --amber: #FFC233; --amber-fill: #FFC233; --amber-weak: rgba(255, 194, 51, .14);
+  --scrim: rgba(0, 0, 0, .6); color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 15px;
+  line-height: 1.45; -webkit-font-smoothing: antialiased;
+}
+.num { font-variant-numeric: tabular-nums; }
+.up { color: var(--up); } .down { color: var(--down); }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+:focus-visible { outline: 2px solid var(--down); outline-offset: 2px; border-radius: 4px; }
+
+.wrap {
+  max-width: 560px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0 48px;
+}
+
+/* 상단: 시각이 주인공 */
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.top {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg);
+  padding-block: 18px 10px;
+}
+.clock { display: flex; align-items: flex-end; gap: 12px; }
+.clock .t { font-size: 46px; font-weight: 700; letter-spacing: -1.5px; line-height: 1; }
+.clock .d { display: flex; flex-direction: column; padding-bottom: 4px; }
+.clock .d b { font-size: 15px; font-weight: 600; }
+.clock .d span { font-size: 13px; color: var(--muted); }
+
+.tabs { display: flex; gap: 4px; margin-top: 16px; background: var(--rule); padding: 3px; border-radius: 10px; }
+.tabs button {
+  flex: 1; padding: 9px 0; border-radius: 8px; font-weight: 600; font-size: 14px; color: var(--muted);
+  display: flex; justify-content: center; align-items: center; gap: 6px;
+}
+.tabs button[aria-selected="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+.count { font-size: 11px; min-width: 18px; padding: 1px 5px; border-radius: 9px; background: var(--up); color: #fff; }
+.count.zero { background: var(--muted); }
+
+.controls { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; align-items: center; }
+.chip {
+  padding: 6px 11px; border-radius: 999px; border: 1px solid var(--rule); background: var(--surface);
+  font-size: 13px; font-weight: 500; color: var(--muted);
+}
+.chip[aria-pressed="true"] { border-color: var(--ink); color: var(--ink); font-weight: 600; }
+.controls .sep { width: 1px; height: 18px; background: var(--rule); }
+
+/* 테마 */
+.themes { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
+.theme { background: var(--surface); border-radius: var(--r-lg); overflow: hidden; }
+.theme-head {
+  width: 100%; display: grid; grid-template-columns: 34px 1fr auto; column-gap: 10px; align-items: center;
+  padding: 14px 14px 12px; text-align: left;
+}
+.rank { font-size: 26px; font-weight: 700; line-height: 1; align-self: start; padding-top: 2px; }
+.tname { font-size: 17px; font-weight: 700; min-width: 0; text-wrap: balance; }
+.trate { font-size: 17px; font-weight: 700; }
+.tmeta { grid-column: 2 / 4; display: flex; gap: 14px; font-size: 13px; color: var(--muted); margin-top: 4px; }
+.tmeta b { color: var(--ink); font-weight: 600; }
+.money { grid-column: 2 / 4; height: 4px; background: var(--rule); border-radius: 2px; margin-top: 9px; overflow: hidden; }
+.money i { display: block; height: 100%; background: var(--up); border-radius: 2px; }
+.related { grid-column: 2 / 4; font-size: 12px; color: var(--muted); margin-top: 6px; }
+.chev { transition: transform .2s; color: var(--muted); }
+.theme[data-open="true"] .chev { transform: rotate(180deg); }
+
+.stocks { border-top: 1px solid var(--rule); padding: 6px 8px 10px; }
+.stock {
+  position: relative; width: 100%; display: grid; grid-template-columns: 1fr auto; column-gap: 10px;
+  padding: 9px 8px; text-align: left; border-radius: 10px; isolation: isolate;
+}
+.stock + .stock { margin-top: 2px; }
+.stock:hover { background: var(--bg); }
+.bar { position: absolute; left: 0; top: 4px; bottom: 4px; z-index: -1; border-radius: 8px; background: var(--up-weak); transform-origin: left; }
+.stock.neg .bar { background: var(--down-weak); }
+.theme[data-open="true"] .bar { animation: grow .5s cubic-bezier(.2,.7,.2,1) both; }
+@keyframes grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.sname { font-size: 15.5px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sname.lead { font-weight: 700; }
+.sname.hot { text-decoration: underline; text-decoration-color: var(--amber-fill); text-decoration-thickness: 3px; text-underline-offset: 4px; }
+.srate { font-size: 15.5px; font-weight: 700; text-align: right; }
+.ssub { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-top: 4px; font-size: 12.5px; color: var(--muted); }
+.tags { display: flex; gap: 5px; justify-content: flex-end; align-items: center; margin-top: 4px; }
+.tag { font-size: 11.5px; font-weight: 600; padding: 2px 7px; border-radius: var(--r-sm); white-space: nowrap; }
+.tag.search { border: 1px solid var(--ink); }
+.tag.hot { background: var(--amber-fill); color: #1a1400; }
+.tag.limit { background: var(--amber-fill); color: #1a1400; }
+.tag.tech { background: var(--ink); color: var(--surface); }
+.empty-row { font-size: 13px; color: var(--muted); padding: 10px 8px; }
+
+/* 금쪽이 · 신호 */
+.section-title { font-size: 15px; font-weight: 700; margin: 22px 0 10px; display: flex; align-items: baseline; gap: 8px; }
+.section-title span { font-size: 12.5px; color: var(--muted); font-weight: 500; }
+.panel { background: var(--surface); border-radius: var(--r-lg); padding: 14px; }
+.panel p { margin: 0; color: var(--muted); font-size: 14px; }
+.list { display: flex; flex-direction: column; }
+.li { display: grid; grid-template-columns: 1fr auto; column-gap: 10px; padding: 10px 2px; border-top: 1px solid var(--rule); }
+.li:first-child { border-top: 0; }
+.li .why { grid-column: 1 / 3; font-size: 12.5px; color: var(--muted); margin-top: 3px; }
+.li .why.miss::before { content: "부족: "; color: var(--up); font-weight: 600; }
+.rule-note { font-size: 12.5px; color: var(--muted); margin-top: 10px; line-height: 1.6; }
+
+/* 종목 상세 시트 */
+.scrim { position: fixed; inset: 0; background: var(--scrim); z-index: 20; }
+.sheet {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 21; background: var(--surface);
+  border-radius: 20px 20px 0 0; max-height: 88vh; overflow-y: auto;
+  padding: 10px max(16px, env(safe-area-inset-right, 0px)) calc(24px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+  animation: up .25s cubic-bezier(.2,.7,.2,1);
+}
+@keyframes up { from { transform: translateY(40px); opacity: .6; } }
+.sheet-in { max-width: 560px; margin: 0 auto; }
+.grab { width: 38px; height: 4px; border-radius: 2px; background: var(--rule); margin: 0 auto 12px; }
+.sh-head { display: grid; grid-template-columns: 1fr auto; align-items: start; gap: 8px; }
+.sh-head h2 { margin: 0; font-size: 21px; font-weight: 700; }
+.sh-head .code { font-size: 12.5px; color: var(--muted); }
+.sh-rate { font-size: 22px; font-weight: 700; text-align: right; }
+.close { font-size: 13px; color: var(--muted); padding: 6px 10px; border: 1px solid var(--rule); border-radius: 999px; margin-top: 8px; }
+.chart { margin-top: 12px; }
+.chart svg { width: 100%; height: auto; display: block; }
+.legend { display: flex; gap: 12px; font-size: 11.5px; color: var(--muted); margin-top: 4px; }
+.legend i { display: inline-block; width: 12px; height: 2px; vertical-align: middle; margin-right: 4px; }
+.facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: var(--rule); border-radius: 12px; overflow: hidden; margin-top: 14px; }
+.fact { background: var(--surface); padding: 10px; }
+.fact small { display: block; font-size: 11.5px; color: var(--muted); }
+.fact b { font-size: 15px; font-weight: 700; }
+.fact b.amber { color: var(--amber); }
+.check { margin-top: 16px; }
+.check h3 { margin: 0 0 6px; font-size: 14.5px; display: flex; justify-content: space-between; align-items: baseline; }
+.check h3 .ok { color: var(--up); } .check h3 .no { color: var(--muted); }
+.cond { display: grid; grid-template-columns: 20px 1fr auto; gap: 8px; align-items: baseline; padding: 7px 0; border-top: 1px solid var(--rule); font-size: 13.5px; }
+.cond .mk { font-weight: 700; }
+.cond.ok .mk { color: var(--up); } .cond.no .mk { color: var(--muted); }
+.cond.no .lb { color: var(--muted); }
+.cond .dt { font-size: 12px; color: var(--muted); text-align: right; }
+.note { font-size: 12.5px; color: var(--muted); padding: 6px 0 0 28px; }
+.note.warn { color: var(--amber); font-weight: 600; }
+
+.state { padding: 60px 0; text-align: center; color: var(--muted); }
+.foot { font-size: 12px; color: var(--muted); margin-top: 22px; line-height: 1.7; }
+.foot i { display: inline-block; width: 22px; height: 10px; border-radius: 3px; background: var(--up-weak); vertical-align: middle; margin-right: 6px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .theme[data-open="true"] .bar, .sheet { animation: none; }
+  .chev { transition: none; }
+}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="clock">
+      <div class="t num" id="clock">15:00</div>
+      <div class="d"><b id="dateLabel">불러오는 중</b><span id="subLabel"></span></div>
+    </div>
+    <div class="tabs" role="tablist">
+      <button role="tab" id="tab-themes" aria-selected="true" aria-controls="view-themes">주도테마</button>
+      <button role="tab" id="tab-picks" aria-selected="false" aria-controls="view-picks">금쪽이 · 기법 신호 <span class="count num" id="pickCount">0</span></button>
+    </div>
+    <div class="controls" id="controls">
+      <button class="chip" data-sort="value" aria-pressed="true">거래대금순</button>
+      <button class="chip" data-sort="rate" aria-pressed="false">등락률순</button>
+      <button class="chip" data-sort="cap" aria-pressed="false">대금비순</button>
+      <span class="sep" aria-hidden="true"></span>
+      <button class="chip" data-filter="leader" aria-pressed="false">주도주만</button>
+      <button class="chip" data-filter="hot" aria-pressed="false">대금비 10 이하</button>
+    </div>
+  </header>
+
+  <main>
+    <section id="view-themes" role="tabpanel" aria-labelledby="tab-themes">
+      <div class="themes" id="themes"><div class="state">주도테마를 불러오는 중</div></div>
+      <div class="foot">
+        <div><i></i>막대 길이는 거래대금입니다. 6개 테마 전체에서 같은 기준으로 그립니다.</div>
+        <div>굵은 이름은 주도주(테마 5위 안, 네이버 검색 100위 안), 호박색 밑줄은 시가총액/거래대금 10 이하입니다.</div>
+        <div>종목을 누르면 일봉과 기법 조건 판정을 볼 수 있습니다.</div>
+      </div>
+    </section>
+    <section id="view-picks" role="tabpanel" aria-labelledby="tab-picks" hidden>
+      <div id="picks"></div>
+    </section>
+  </main>
+</div>
+
+<div class="scrim" id="scrim" hidden></div>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="shName" hidden></div>
+
+<script>
+(function () {
+  const DATA_URL = "data/latest.json";
+  const state = { data: null, sort: "value", filter: { leader: false, hot: false }, open: new Set([1]) };
+  const $ = (s, el = document) => el.querySelector(s);
+  const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const eok = (v) => v >= 10000 ? (v / 10000).toFixed(1) + "조" : Math.round(v).toLocaleString("ko-KR") + "억";
+  const pct = (v) => (v > 0 ? "+" : "") + v.toFixed(2) + "%";
+  const cls = (v) => v > 0 ? "up" : v < 0 ? "down" : "";
+  const won = (v) => Math.round(v).toLocaleString("ko-KR");
+  const WD = "일월화수목금토";
+
+  try {
+    const saved = JSON.parse(localStorage.getItem("briefing-prefs") || "{}");
+    if (saved.sort) state.sort = saved.sort;
+    if (saved.filter) state.filter = Object.assign(state.filter, saved.filter);
+  } catch (e) {}
+  const savePrefs = () => { try { localStorage.setItem("briefing-prefs", JSON.stringify({ sort: state.sort, filter: state.filter })); } catch (e) {} };
+
+  function header(d) {
+    const y = +d.date.slice(0, 4), m = +d.date.slice(4, 6), day = +d.date.slice(6);
+    const dt = new Date(y, m - 1, day);
+    $("#clock").textContent = d.time;
+    $("#dateLabel").textContent = `${m}월 ${day}일 ${WD[dt.getDay()]}요일`;
+    $("#subLabel").textContent = "등락률 50% + 거래대금 50%";
+    const n = d.gold.passed.length + d.signals.filter((s) => s.common).length;
+    const c = $("#pickCount"); c.textContent = n; c.classList.toggle("zero", n === 0);
+  }
+
+  function techPassed(s) { return (s.checks || []).filter((c) => c.name !== "공통조건" && c.passed).map((c) => c.name); }
+
+  function stockRow(s, vmax) {
+    const limit = s.rate >= 29.5;
+    const keep = (!state.filter.leader || s.leader) && (!state.filter.hot || s.hot);
+    if (!keep) return "";
+    const w = Math.max(2, Math.min(100, (s.value / vmax) * 100));
+    const tags = [];
+    if (limit) tags.push('<span class="tag limit">상한가</span>');
+    techPassed(s).forEach((t) => tags.push(`<span class="tag tech">${esc(t)}</span>`));
+    if (s.hot) tags.push(`<span class="tag hot num">대금비 ${s.capRatio}</span>`);
+    if (s.leader) tags.push(`<span class="tag search num">검색 ${s.search}위</span>`);
+    return `<button class="stock ${s.rate < 0 ? "neg" : ""}" data-code="${esc(s.code)}">
+      <span class="bar" style="width:${w}%"></span>
+      <span class="sname ${s.leader ? "lead" : ""} ${s.hot ? "hot" : ""}">${esc(s.name)}</span>
+      <span class="srate num ${cls(s.rate)}">${limit ? "상한가" : pct(s.rate)}</span>
+      <span class="ssub num">${eok(s.value)} / ${eok(s.mcap)}</span>
+      <span class="tags">${tags.join("")}</span>
+    </button>`;
+  }
+
+  function sorted(stocks) {
+    const a = stocks.slice();
+    if (state.sort === "rate") a.sort((x, y) => y.rate - x.rate);
+    else if (state.sort === "cap") a.sort((x, y) => (x.capRatio ?? 1e9) - (y.capRatio ?? 1e9));
+    else a.sort((x, y) => y.value - x.value);
+    return a;
+  }
+
+  function renderThemes() {
+    const d = state.data;
+    const vmax = Math.max(1, ...d.themes.flatMap((t) => t.stocks.map((s) => s.value)));
+    const tmax = Math.max(1, ...d.themes.map((t) => t.value));
+    $("#themes").innerHTML = d.themes.map((t) => {
+      const open = state.open.has(t.rank);
+      const rows = sorted(t.stocks).map((s) => stockRow(s, vmax)).join("");
+      return `<article class="theme" data-open="${open}">
+        <button class="theme-head" data-rank="${t.rank}" aria-expanded="${open}">
+          <span class="rank num">${t.rank}</span>
+          <span class="tname">${esc(t.name)}</span>
+          <span class="trate num ${cls(t.rate)}">${pct(t.rate)}</span>
+          <span class="tmeta num"><span>거래대금 <b>${eok(t.value)}</b></span><span>상승 <b>${t.rising}/${t.total}</b></span>
+            <svg class="chev" width="14" height="14" viewBox="0 0 14 14" aria-hidden="true" style="margin-left:auto"><path d="M3 5l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></span>
+          <span class="money" aria-hidden="true"><i style="width:${(t.value / tmax) * 100}%"></i></span>
+          ${t.related.length ? `<span class="related">함께 묶인 테마: ${t.related.map(esc).join(", ")}</span>` : ""}
+        </button>
+        ${open ? `<div class="stocks">${rows || '<div class="empty-row">선택한 조건에 맞는 종목이 없습니다.</div>'}</div>` : ""}
+      </article>`;
+    }).join("");
+  }
+
+  function renderPicks() {
+    const d = state.data;
+    const g = d.gold;
+    let h = `<div class="section-title">금쪽이 <span>공통조건 5개 + 주도테마 5위 안 주도주</span></div><div class="panel">`;
+    if (g.passed.length) {
+      h += `<div class="list">` + g.passed.map((c) => `<button class="li" data-code="${esc(c.code)}" style="text-align:left;width:100%">
+        <b>${esc(c.name)}</b><b class="num ${cls(c.rate)}">${pct(c.rate)}</b>
+        <span class="why num">${esc(c.theme)} · ${eok(c.value)} / ${eok(c.mcap)} · 거래량 ${c.volRatio}배 · 대금비 ${c.capRatio} · 검색 ${c.search}위</span></button>`).join("") + `</div>`;
+    } else {
+      h += `<p>오늘은 공통조건을 모두 만족한 주도주가 없습니다.</p>`;
+    }
+    if (g.near.length) {
+      h += `<div class="list" style="margin-top:10px">` + g.near.map((c) => `<div class="li"><span>${esc(c.name)}</span><span class="num ${cls(c.rate)}">${pct(c.rate)}</span><span class="why miss">${esc(c.failed)}</span></div>`).join("") + `</div>`;
+    }
+    h += `<div class="rule-note">거래대금 550억 이상, 상승률 5% 이상, 거래량 전일 대비 3~100배, 시가총액 1,000억 이상, 시가총액/거래대금 10 이하</div></div>`;
+
+    const full = d.signals.filter((s) => s.common), ref = d.signals.filter((s) => !s.common);
+    h += `<div class="section-title">기법 신호 <span>공통조건을 만족하고 기법 조건까지 맞은 종목</span></div><div class="panel">`;
+    h += full.length ? `<div class="list">` + full.map(sigRow).join("") + `</div>` : `<p>오늘은 공통조건까지 만족한 기법 신호가 없습니다.</p>`;
+    h += `</div>`;
+    if (ref.length) {
+      h += `<div class="section-title">참고 <span>기법은 맞지만 공통조건이 부족한 종목</span></div><div class="panel"><div class="list">` + ref.map(sigRow).join("") + `</div></div>`;
+    }
+    $("#picks").innerHTML = h;
+  }
+  function sigRow(s) {
+    return `<div class="li"><span><b>${esc(s.name)}</b> ${s.techs.map((t) => `<span class="tag tech">${esc(t)}</span>`).join(" ")}</span>
+      <span class="num ${cls(s.rate)}">${pct(s.rate)}</span>
+      <span class="why num">${eok(s.value)}${s.theme ? " · " + esc(s.theme) : " · 주도테마 밖"}</span>
+      ${s.common ? "" : `<span class="why miss">${esc(s.commonFailed.join(", "))}</span>`}
+      ${s.notes.map((n) => `<span class="why">${esc(n)}</span>`).join("")}</div>`;
+  }
+
+  // ── 종목 상세 ──
+  function findStock(code) {
+    for (const t of state.data.themes) for (const s of t.stocks) if (s.code === code) return [s, t];
+    return [null, null];
+  }
+
+  function chartSVG(s) {
+    const c = s.candles || [];
+    if (c.length < 2) return '<p class="rule-note">일봉 데이터가 없습니다.</p>';
+    const W = 640, PH = 210, VH = 56, G = 10, L = 4, R = 58, T = 8;
+    const iw = W - L - R, n = c.length, step = iw / n, bw = Math.max(2, step * 0.62);
+    const highs = c.map((x) => x[2]), lows = c.map((x) => x[3]);
+    const mas = [...(s.ma10 || []), ...(s.ma20 || [])].filter((v) => v != null);
+    let hi = Math.max(...highs, ...mas), lo = Math.min(...lows, ...mas);
+    const pad = (hi - lo) * 0.06 || hi * 0.02; hi += pad; lo -= pad;
+    const y = (v) => T + (hi - v) / (hi - lo) * PH;
+    const vmax = Math.max(...c.map((x) => x[5])) || 1;
+    const vy0 = T + PH + G + VH;
+    let out = `<svg viewBox="0 0 ${W} ${vy0 + 22}" role="img" aria-label="${esc(s.name)} 최근 ${n}일 일봉">`;
+    [hi - pad, (hi + lo) / 2, lo + pad].forEach((v) => {
+      out += `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--rule)" stroke-width="1"/>
+              <text x="${W - R + 6}" y="${y(v) + 4}" font-size="11" fill="var(--muted)" class="num">${won(v)}</text>`;
+    });
+    c.forEach((k, i) => {
+      const [, o, h, l, cl, v] = k, x = L + i * step + step / 2, col = cl >= o ? "var(--up)" : "var(--down)";
+      out += `<line x1="${x}" x2="${x}" y1="${y(h)}" y2="${y(l)}" stroke="${col}" stroke-width="1"/>`;
+      const top = y(Math.max(o, cl)), hgt = Math.max(1, Math.abs(y(o) - y(cl)));
+      out += `<rect x="${x - bw / 2}" y="${top}" width="${bw}" height="${hgt}" fill="${col}"/>`;
+      const vh = (v / vmax) * VH;
+      out += `<rect x="${x - bw / 2}" y="${vy0 - vh}" width="${bw}" height="${vh}" fill="${col}" opacity=".45"/>`;
+    });
+    const line = (arr, col) => {
+      const pts = arr.map((v, i) => v == null ? null : `${L + i * step + step / 2},${y(v)}`).filter(Boolean);
+      return pts.length > 1 ? `<polyline points="${pts.join(" ")}" fill="none" stroke="${col}" stroke-width="1.6"/>` : "";
+    };
+    out += line(s.ma10 || [], "var(--amber)") + line(s.ma20 || [], "var(--ink)");
+    const last = c[n - 1];
+    out += `<circle cx="${L + (n - 1) * step + step / 2}" cy="${y(last[4])}" r="3.5" fill="var(--surface)" stroke="${last[4] >= last[1] ? "var(--up)" : "var(--down)"}" stroke-width="2"/>`;
+    const lab = (i) => `${+c[i][0].slice(4, 6)}/${+c[i][0].slice(6)}`;
+    [0, Math.floor(n / 2), n - 1].forEach((i, k) => {
+      out += `<text x="${L + i * step + step / 2}" y="${vy0 + 16}" font-size="11" fill="var(--muted)" text-anchor="${["start", "middle", "end"][k]}" class="num">${lab(i)}</text>`;
+    });
+    return out + `</svg>`;
+  }
+
+  function checkBlock(c) {
+    return `<div class="check"><h3><span>${esc(c.name)}</span><span class="${c.passed ? "ok" : "no"} num">${c.passed ? "충족" : "미충족"} ${c.score}</span></h3>
+      ${c.conds.map((x) => `<div class="cond ${x.ok ? "ok" : "no"}"><span class="mk">${x.ok ? "✓" : "✕"}</span><span class="lb">${esc(x.label)}</span><span class="dt num">${esc(x.detail)}</span></div>`).join("")}
+      ${(c.notes || []).map((n) => `<div class="note ${n.startsWith("⚠") ? "warn" : ""}">${esc(n)}</div>`).join("")}</div>`;
+  }
+
+  let lastFocus = null;
+  function openSheet(code) {
+    const [s, t] = findStock(code);
+    if (!s) return;
+    lastFocus = document.activeElement;
+    const sh = $("#sheet");
+    sh.innerHTML = `<div class="sheet-in"><div class="grab"></div>
+      <div class="sh-head"><div><h2 id="shName">${esc(s.name)}</h2><div class="code num">${esc(s.code)} · ${esc(t.name)} ${t.rank}위</div></div>
+        <div><div class="sh-rate num ${cls(s.rate)}">${pct(s.rate)}</div></div></div>
+      <div class="chart">${chartSVG(s)}<div class="legend"><span><i style="background:var(--amber)"></i>10일선</span><span><i style="background:var(--ink)"></i>20일선</span><span>최근 ${s.candles ? s.candles.length : 0}거래일</span></div></div>
+      <div class="facts num">
+        <div class="fact"><small>거래대금</small><b>${eok(s.value)}</b></div>
+        <div class="fact"><small>시가총액</small><b>${eok(s.mcap)}</b></div>
+        <div class="fact"><small>대금비</small><b class="${s.hot ? "amber" : ""}">${s.capRatio ?? "-"}</b></div>
+        <div class="fact"><small>거래량 (전일 대비)</small><b>${s.volRatio != null ? s.volRatio + "배" : "-"}</b></div>
+        <div class="fact"><small>네이버 검색</small><b>${s.search ? s.search + "위" : "100위 밖"}</b></div>
+        <div class="fact"><small>주도주</small><b>${s.leader ? "예" : "아니오"}</b></div>
+      </div>
+      ${(s.checks || []).map(checkBlock).join("")}
+      <button class="close" id="closeSheet">닫기</button></div>`;
+    sh.hidden = false; $("#scrim").hidden = false;
+    document.body.style.overflow = "hidden";
+    $("#closeSheet").focus();
+  }
+  function closeSheet() {
+    $("#sheet").hidden = true; $("#scrim").hidden = true; document.body.style.overflow = "";
+    if (lastFocus) lastFocus.focus();
+  }
+
+  // ── 이벤트 ──
+  document.addEventListener("click", (e) => {
+    const head = e.target.closest(".theme-head");
+    if (head) { const r = +head.dataset.rank; state.open.has(r) ? state.open.delete(r) : state.open.add(r); renderThemes(); return; }
+    const st = e.target.closest("[data-code]");
+    if (st) { openSheet(st.dataset.code); return; }
+    if (e.target.closest("#closeSheet") || e.target.id === "scrim") { closeSheet(); return; }
+    const sortBtn = e.target.closest("[data-sort]");
+    if (sortBtn) { state.sort = sortBtn.dataset.sort; syncControls(); renderThemes(); savePrefs(); return; }
+    const fBtn = e.target.closest("[data-filter]");
+    if (fBtn) { const k = fBtn.dataset.filter; state.filter[k] = !state.filter[k]; syncControls(); renderThemes(); savePrefs(); return; }
+    const tab = e.target.closest('[role="tab"]');
+    if (tab) selectTab(tab.id);
+  });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("#sheet").hidden) closeSheet(); });
+
+  function syncControls() {
+    document.querySelectorAll("[data-sort]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.sort === state.sort));
+    document.querySelectorAll("[data-filter]").forEach((b) => b.setAttribute("aria-pressed", !!state.filter[b.dataset.filter]));
+  }
+  function selectTab(id) {
+    const themes = id === "tab-themes";
+    $("#tab-themes").setAttribute("aria-selected", themes);
+    $("#tab-picks").setAttribute("aria-selected", !themes);
+    $("#view-themes").hidden = !themes; $("#view-picks").hidden = themes;
+    $("#controls").hidden = !themes;
+  }
+
+  function start(data) {
+    state.data = data;
+    header(data); syncControls(); renderThemes(); renderPicks();
+  }
+  // 텔레그램 미니앱 안에서 열리면 전체 높이로 펼치고 텔레그램 테마(다크/라이트)를 따름
+  const tg = window.Telegram && window.Telegram.WebApp;
+  if (tg) {
+    try {
+      tg.ready(); tg.expand();
+      if (tg.colorScheme) document.documentElement.setAttribute("data-theme", tg.colorScheme);
+      tg.onEvent && tg.onEvent("themeChanged", () => document.documentElement.setAttribute("data-theme", tg.colorScheme));
+    } catch (e) {}
+  }
+  fetch(DATA_URL, { cache: "no-store" })
+    .then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); })
+    .then(start)
+    .catch(() => { $("#themes").innerHTML = '<div class="state">오늘 데이터를 아직 받지 못했습니다. 15시 이후에 다시 열어주세요.</div>'; });
+})();
+</script>
